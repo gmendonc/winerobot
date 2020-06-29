@@ -1,0 +1,9 @@
+venvw/
+.vscode/
+winerobot/*.csv
+winerobot/__pycache__/__init__.cpython-38.pyc
+winerobot/__pycache__/wine.cpython-38.pyc
+winerobot/__pycache__/*
+*.csv
+*.pem
+.chromedriver/
