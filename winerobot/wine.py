@@ -1,41 +1,43 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup as bs
 import pandas as pd
 import requests
 import re
 import time
+import os
 
 
-def get_soup(page_url, retry_count=0):
+def get_browser():
+
+    CHROMEDRIVER_PATH = os.path.join('.chromedriver','bin', 'chromedriver')
+    options = Options()
+    options.headless = True
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36")
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-gpu')
+    options.add_argument('window-size=1920x1080')
+    options.add_argument('start-maximized') # 
+    options.add_argument('disable-infobars')
+    options.add_argument("--disable-extensions")
     
-    HEADERS = {
-    'user-agent': ('Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 '
-                   '(KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'),
-    'Connection':'close'
-    }
-    session= requests.Session()
-    session.trust_env = False
+    try:
+        browser = webdriver.Chrome(CHROMEDRIVER_PATH, options= options)
+    except:
+        print("webdriver falhou")
+        raise
+    return browser
+
+def get_soup(browser):
     
     print("Iniciando session_get")
     
     try:
-        response = session.get(page_url, headers=HEADERS)
-        print("\nScraping page:",page_url," = ", response)
-        soup = bs(response.content, 'html.parser')
-        if response:
-            return soup
-        else:
-            print('Falha no session GET')
-            print(soup.body)
-            raise
+        soup = bs(browser.page_source, 'html.parser')
+        return soup
     except:
-        print("Get falhou")
-        retry_count += 1
-        if retry_count <= 3:
-            print("retry get")
-            session = requests.Session()
-            get_soup(page_url, retry_count)
-        else:
-            raise
+        print("get_browser falhou")
+        raise
 
 def get_num_pages(soup):
     
@@ -44,8 +46,9 @@ def get_num_pages(soup):
     
     return num_pages
 
-def scrape_technical_details(wine_url):
-    wine_soup= get_soup(wine_url)
+def scrape_technical_details(browser, wine_url):
+    browser.get(wine_url)
+    wine_soup= get_soup(browser)
     
     technical_details = wine_soup.find('div', class_='TechnicalDetails')
     tipo_e_uva = technical_details.find('div', class_='TechnicalDetails-description--grape')
@@ -58,7 +61,7 @@ def scrape_technical_details(wine_url):
     
     return uva, classificacao
     
-def scrape_soup(soup):
+def scrape_soup(browser, soup):
     
     list_name=[]
     list_link, list_country, list_type, list_description= [], [], [], []
@@ -95,7 +98,7 @@ def scrape_soup(soup):
             full_price = float(price_box.find(class_="Price--fullPrice").find(class_="Price-raw").text)
             discount = 1-float(lowest_price)/float(full_price)
             try:
-                grape, classification = scrape_technical_details('https://' + wine_link)
+                grape, classification = scrape_technical_details(browser, 'https://' + wine_link)
             except:
                 grape, classification= 'indefinido', 'indefinido'
             
