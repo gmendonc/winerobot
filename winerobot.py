@@ -1,10 +1,24 @@
 from winerobot.wine import get_soup, get_num_pages, scrape_soup, get_browser
+from winerobot.winescraper import Scraper
 import pandas as pd
 import time
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
+import logging
+
+# Logging
+# Criando o logger
+logger = logging.getLogger(__name__)
+# Criando os handlers
+c_handler = logging.StreamHandler()
+c_handler.setLevel(logging.DEBUG)
+# Criando os formatters
+c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+c_handler.setFormatter(c_format)
+# Adicionando handler ao logger
+logger.addHandler(c_handler)
 
 # Webscrapper do Site da Wine
 # Cabeçalhos e Imports
@@ -20,16 +34,20 @@ if __name__ == "__main__":
     tipos_de_vinho = ['TINTO','BRANCO','ROSE','ESPUMANTE']
 
     try:
-        browser = get_browser()
+        sc = Scraper()
     except:
-        print('Erro Selenium')
+        logger.exception('Erro ao iniciar o Scraper')
 
     for tipo in tipos_de_vinho:
         pages_to_scrape = 4
         current_page = 1
         while (current_page != pages_to_scrape):
     
-            print('vinho ', tipo, ': Iniciando get_soup pagina ', current_page)
+            logger.debug(f'Vinho {tipo}. Analizando a página {current_page}')
+
+            page_url = URL_BASE.format(tipo.lower(),tipo, current_page)
+            process_winepage(sc, page_url)
+            
             browser.get(URL_BASE.format(tipo.lower(),tipo, current_page))
             delay = 10 # seconds
             try:
