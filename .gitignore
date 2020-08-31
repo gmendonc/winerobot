@@ -7,3 +7,4 @@ winerobot/__pycache__/*
 *.csv
 *.pem
 .chromedriver/
+file.log
