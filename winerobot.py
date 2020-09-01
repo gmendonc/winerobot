@@ -11,11 +11,12 @@ import logging
 # Logging
 # Criando o logger
 logger = logging.getLogger('Winerobot')
+logger.setLevel(logging.DEBUG)
 # Criando os handlers
 c_handler = logging.StreamHandler()
-c_handler.setLevel(logging.DEBUG)
+c_handler.setLevel(logging.ERROR)
 f_handler = logging.FileHandler('file.log', mode='w', encoding='UTF-8')
-f_handler.setLevel(logging.DEBUG)
+f_handler.setLevel(logging.INFO)
 # Criando os formatters
 c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 c_handler.setFormatter(c_format)
@@ -34,11 +35,11 @@ URL_BASE = URL_RAIZ+"/vinhos/{0}/cVINHOS-atTIPO_{1}-p{2}.html"
 
 if __name__ == "__main__":
     # Módulo Principal - Processamento do Site
-    logger.warning('>>>>>>>>>>>>>>INÍCIO DO PROCESSAMENTO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-    wine_df = pd.DataFrame(columns=['wine_name','link','country','type','grape', 'classification', 'description','evaluation','rating_count','lowest_price','full_price','discount'])
-
+    print('>>>>>>>>>>>>>>INÍCIO DO PROCESSAMENTO <<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    
     #tipos_de_vinho = ['TINTO','BRANCO','ROSE','ESPUMANTE']
     tipos_de_vinho = ['TINTO']
+    RESET_CSV = True
 
     try:
         sc = Scraper()
@@ -48,12 +49,22 @@ if __name__ == "__main__":
     for tipo in tipos_de_vinho:
         pages_to_scrape = 4
         current_page = 1
-        while (current_page != pages_to_scrape):
+        last_page = False
+        print(f'>>> VINHO {tipo}')
+        while (not last_page):
     
-            logger.warning(f'Vinho {tipo}. Analizando a página {current_page}')
+            logger.info(f'Vinho {tipo}. Analizando a página {current_page}')
+            print(f'>>>>> PÁGINA {current_page}')
 
             page_url = URL_BASE.format(tipo.lower(),tipo, current_page)
-            process_winepage(sc, page_url)
+            last_page, df = process_winepage(sc, page_url)
+            logger.debug(f'Check de última página = {last_page}')
+            if RESET_CSV:
+                df.to_csv('result.csv', encoding='utf-8',mode='w',index=False)
+                RESET_CSV = False
+            else:
+                df.to_csv('result.csv', encoding='utf-8',mode='a',header=False, index=False)
+
             
     
 #            if current_page == 1:
@@ -67,6 +78,6 @@ if __name__ == "__main__":
             time.sleep(10)
             current_page += 1
     
-    logger.warning("Scrape finished.")
+    print("Scrape finished.")
     sc.close()
 #   wine_df.to_csv('result_wine.csv',index=False)

@@ -8,3 +8,5 @@ winerobot/__pycache__/*
 *.pem
 .chromedriver/
 file.log
+config.ini
+debug.log
