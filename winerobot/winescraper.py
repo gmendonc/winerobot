@@ -1,11 +1,15 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.remote.remote_connection import LOGGER, logging
+from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup as bs
+from progress.bar import IncrementalBar 
 import os
+import platform
 import urllib.parse
 import re
 import pandas as pd
+import numpy as np
 import configparser
 import logging
 
@@ -42,7 +46,6 @@ class Scraper:
     """
  
     def init_browser(self):
-        CHROMEDRIVER_PATH = os.path.join('.chromedriver','bin', 'chromedriver')
         options = Options()
         options.headless = True
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36")
@@ -55,7 +58,11 @@ class Scraper:
         options.add_argument("--log-level=3")
         
         try:
-            self._browser = webdriver.Chrome(CHROMEDRIVER_PATH, options= options)
+            if platform.system() == 'Windows':
+                CHROMEDRIVER_PATH = os.path.join('.chromedriver','bin', 'chromedriver')
+                self._browser = webdriver.Chrome(CHROMEDRIVER_PATH, options= options)
+            else:
+                self._browser = webdriver.Chrome(options= options)
         except Exception as e:
             logger.exception('Erro no Webdriver')
             raise e
@@ -75,7 +82,7 @@ class Scraper:
             logger.exception('Erro no carregamento da página')
     
     def close(self):
-        self._browser.close()
+        self._browser.quit()
 
         
     def __init__(self):
@@ -206,6 +213,7 @@ class Wine:
             logger.debug(f'Vivino Nome + Link: {self._vivino_name}, {self._vivino_link}')
         except:
             logger.warning('Erro ao buscar o nome do vinho no Vivino')
+            raise
 
     def viv_find_score(self, soup):
         try:
@@ -215,6 +223,7 @@ class Wine:
             logger.debug(f'Vivino - Nota: {self._vivino_avg_score}')
         except:
             logger.warning(f'{self._name}: Erro ao pesquisar a nota no Vivino')
+            raise
 
     def viv_find_rating(self, soup):
         try:
@@ -224,6 +233,7 @@ class Wine:
             logger.debug(f'Vivino - Qtde de avaliações: {self._vivino_rating}')
         except:
             logger.warning(f'{self._name}: Erro ao buscar qtde de avaliações no Vivino')
+            raise
 
     def viv_find_price(self, soup):
         try:
@@ -254,6 +264,7 @@ class Wine:
             self.viv_find_price(wine_card_soup)
         except:
             logger.warning('Erro ao buscar no Vivino')
+            raise
 
     def get_dict(self):
         dict = {
@@ -282,6 +293,9 @@ class Wine:
         properties_list = [[self._name, self._link, self._country, self._type, self._grape, self._classification, self._description, self._wine_evaluation, self._wine_rating_count,
                             self._lowest_price, self._full_price, self._discount, self._vivino_name, self._vivino_link, self._vivino_avg_score, self._vivino_rating, self._vivino_price]]
         df = pd.DataFrame(properties_list, columns = df_columns)
+        # Correção de um problema que acontece no Winedetective quando o país está vazio
+        df[df_columns['country']] = df.country.replace(np.nan, 'undefined', regex=True)
+        df["country"] = df["country"].astype(str)
         return df
 
     def __init__(self, wine_soup, scraper):
@@ -343,13 +357,15 @@ def process_winepage(sc, url):
         logger.exception("Loading took too much time!")
         raise
     wine_list = page_soup.find('div', class_='ProductList-content').ul.find_all('li')
+    bar = IncrementalBar('Processando', max = len(wine_list))
     for wine_item in wine_list:
         try:
             wine_article = wine_item.find('article', class_='ProductDisplay')
             wine = Wine(wine_article, sc)
             page_df = page_df.append(wine.get_df(), ignore_index=True)
         except:
-            logger.error('Pulando Vinho')
-    page_df.to_csv('test.csv', encoding='utf-8')
+            logger.warning('Pulando Vinho')
+        bar.next()
+    print(' ')
     return last_page, page_df
             
